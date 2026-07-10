@@ -1,34 +1,33 @@
-name: Pull LLBot & PMHQ Images
+name: Pull PMHQ Image Only
 
 on:
   workflow_dispatch:
 
 jobs:
-  pull-and-save:
+  pull-pmhq:
     runs-on: ubuntu-latest
     steps:
-      - name: Pull llbot:8.0.7
-        run: docker pull linyuchen/llbot:8.0.7
+      - name: List available pmhq tags
+        run: |
+          echo "=== Available pmhq tags ==="
+          curl -s "https://hub.docker.com/v2/repositories/linyuchen/pmhq/tags/?page_size=50" \
 
-      - name: Pull pmhq:8.0.6
-        run: docker pull linyuchen/pmhq:8.0.6
+            | python3 -c "import sys,json; data=json.load(sys.stdin); [print(r['name']) for r in data.get('results',[])]" \
+            || echo "Failed to list tags"
 
-      - name: Save llbot to tar
-        run: docker save -o llbot-8.0.7.tar linyuchen/llbot:8.0.7
+      - name: Pull pmhq (try 8.0.6, fallback to latest)
+        run: |
+          docker pull linyuchen/pmhq:8.0.6 || docker pull linyuchen/pmhq:latest
 
       - name: Save pmhq to tar
-        run: docker save -o pmhq-8.0.6.tar linyuchen/pmhq:8.0.6
-
-      - name: Upload llbot artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: llbot-8.0.7-tar
-          path: llbot-8.0.7.tar
-          retention-days: 7
+        run: |
+          TAG=$(docker images linyuchen/pmhq --format '{{.Tag}}' | head -1)
+          echo "Saving pmhq:${TAG}"
+          docker save -o pmhq.tar linyuchen/pmhq:${TAG}
 
       - name: Upload pmhq artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pmhq-8.0.6-tar
-          path: pmhq-8.0.6.tar
+          name: pmhq-tar
+          path: pmhq.tar
           retention-days: 7
