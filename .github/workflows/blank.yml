@@ -1,0 +1,34 @@
+name: Pull LLBot & PMHQ Images
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pull-and-save:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull llbot:8.0.7
+        run: docker pull linyuchen/llbot:8.0.7
+
+      - name: Pull pmhq:8.0.6
+        run: docker pull linyuchen/pmhq:8.0.6
+
+      - name: Save llbot to tar
+        run: docker save -o llbot-8.0.7.tar linyuchen/llbot:8.0.7
+
+      - name: Save pmhq to tar
+        run: docker save -o pmhq-8.0.6.tar linyuchen/pmhq:8.0.6
+
+      - name: Upload llbot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: llbot-8.0.7-tar
+          path: llbot-8.0.7.tar
+          retention-days: 7
+
+      - name: Upload pmhq artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmhq-8.0.6-tar
+          path: pmhq-8.0.6.tar
+          retention-days: 7
