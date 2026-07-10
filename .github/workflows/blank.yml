@@ -1,49 +1,34 @@
-name: Diagnose and Pull PMHQ
+name: Pull PMHQ Image Only
 
 on:
   workflow_dispatch:
 
 jobs:
-  diagnose-pmhq:
+  pull-pmhq:
     runs-on: ubuntu-latest
     steps:
-      - name: Check Docker Hub API for pmhq variants
+      - name: List available pmhq tags
         run: |
-          echo "=== Checking linyuchen/pmhq ==="
-          curl -s -o /dev/null -w "HTTP %{http_code}" "https://hub.docker.com/v2/repositories/linyuchen/pmhq/" || true
-          echo ""
-          
-          echo "=== Checking linyuchen/pmhb ==="
-          curl -s -o /dev/null -w "HTTP %{http_code}" "https://hub.docker.com/v2/repositories/linyuchen/pmhb/" || true
-          echo ""
-          
-          echo "=== Checking linyuchen/llbot-pmhq ==="
-          curl -s -o /dev/null -w "HTTP %{http_code}" "https://hub.docker.com/v2/repositories/linyuchen/llbot-pmhq/" || true
-          echo ""
+          echo "=== Available pmhq tags ==="
+          curl -s "https://hub.docker.com/v2/repositories/linyuchen/pmhq/tags/?page_size=50" > tags.json
+          python3 -c "
+          import json
+          with open('tags.json') as f:
+              data = json.load(f)
+          for r in data.get('results', []):
+              print(r['name'])
+          " || echo "Failed to parse tags"
 
-          echo "=== Listing all repos under linyuchen ==="
-          curl -s "https://hub.docker.com/v2/repositories/linyuchen/?page_size=50" \
-
-            | python3 -c "import sys,json; data=json.load(sys.stdin); [print(r['name']) for r in data.get('results',[])]" \
-            || echo "Failed to list repos"
-
-      - name: Try pulling pmhq with fallback names
+      - name: Pull pmhq latest
         run: |
-          docker pull linyuchen/pmhq:latest 2>/dev/null && echo "SUCCESS: linyuchen/pmhq:latest" && exit 0
-          docker pull linyuchen/pmhb:latest 2>/dev/null && echo "SUCCESS: linyuchen/pmhb:latest" && exit 0
-          docker pull linyuchen/llbot-pmhq:latest 2>/dev/null && echo "SUCCESS: linyuchen/llbot-pmhq:latest" && exit 0
-          echo "ALL PULL ATTEMPTS FAILED"
-          exit 1
+          docker pull linyuchen/pmhq:latest
 
-      - name: Save successful image to tar
-        if: success()
+      - name: Save pmhq to tar
         run: |
-          IMG=$(docker images --format '{{.Repository}}:{{.Tag}}' | grep -E 'pmhq|pmhb' | head -1)
-          echo "Saving ${IMG}"
-          docker save -o pmhq.tar "${IMG}"
+          echo "Saving linyuchen/pmhq:latest"
+          docker save -o pmhq.tar linyuchen/pmhq:latest
 
-      - name: Upload artifact
-        if: success()
+      - name: Upload pmhq artifact
         uses: actions/upload-artifact@v4
         with:
           name: pmhq-tar
